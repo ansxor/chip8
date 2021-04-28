@@ -1,10 +1,13 @@
 module main
 
 import crypto.rand
+import gg
+import gx
 
 const (
-	display_height    = 64
-	display_width     = 32
+	display_width     = 64
+	display_height    = 32
+	display_scale     = 4
 
 	ram_size          = 0xFFFF
 	stack_size        = 0x16
@@ -102,7 +105,7 @@ const (
 struct Chip8 {
 mut:
 	ram            [65535]byte
-	vram           [64][32]bool
+	vram           [display_height][display_width]bool
 	stack          [22]u16
 	stack_position byte
 	variables      [16]byte
@@ -113,6 +116,10 @@ mut:
 	dt u8
 	// sound timer
 	st u8
+	// where the file ends
+	end_point u16
+	// game interface
+	gg &gg.Context = 0
 }
 
 fn (c Chip8) get_instruction(pos u16) u16 {
@@ -136,7 +143,7 @@ fn (mut c Chip8) cycle() {
 			match instruction & 0xff {
 				// clear the vram
 				0xE0 {
-					c.vram = [display_height][32]bool{}
+					c.vram = [display_height][display_width]bool{}
 				}
 				// return from a subroutine
 				0xEE {
@@ -358,8 +365,21 @@ fn (mut c Chip8) cycle() {
 	c.stack[c.stack_position] += instruction_size
 }
 
+fn frame(mut c Chip8) {
+	c.gg.begin()
+	c.gg.end()
+}
+
 fn main() {
-	mut emulator := Chip8{}
-	emulator.cycle()
-	println('Hello World!')
+	mut emulator := &Chip8{}
+	emulator.gg = gg.new_context(
+		bg_color: gx.rgb(0, 0, 0)
+		width: (display_width * display_scale)
+		height: (display_height * display_scale)
+		create_window: true
+		window_title: 'CHIP-8'
+		frame_fn: frame
+		user_data: emulator
+	)
+	emulator.gg.run()
 }
